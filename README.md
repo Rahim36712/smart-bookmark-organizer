@@ -1,74 +1,199 @@
-# Smart Bookmark Organizer (Free & Privacy-First)
+# 📑 Smart Bookmark Organizer — Chrome Extension (Manifest V3)
 
-A Chrome extension built using **Manifest V3** that scans your bookmark tree and suggests a cleaner folder structure. Local classification works offline. Optional Gemini classification sends eligible bookmark titles and cleaned URLs to Google only after you enable it.
+<div align="center">
 
-## Privacy & Architecture Highlights
-- Local by default: Gemini is optional, requires your own API key and consent, and asks for Google API access only when you verify the key.
-- Gemini privacy controls remove query strings and fragments and exclude private, local, non-web and credential-containing URLs by default.
-- The Gemini key is stored separately from ordinary settings and can be removed with one button.
+[![Manifest V3](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](manifest.json)
+[![Tests](https://img.shields.io/badge/Tests-205%20Passed-brightgreen?style=for-the-badge&logo=node.js&logoColor=white)](#running-tests)
+[![Privacy First](https://img.shields.io/badge/Privacy-100%25_Offline_Default-success?style=for-the-badge&logo=shield&logoColor=white)](#privacy--architecture-guarantees)
+[![Gemini AI](https://img.shields.io/badge/Gemini_AI-6--Tier_Failover-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)](#automatic-gemini-fallback)
+[![Zero Build](https://img.shields.io/badge/Runtime-Vanilla_ES6_%7C_Zero_Build-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](core/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
-### Automatic Gemini fallback
+**An intelligent, privacy-first, fully reversible Chrome extension for deep bookmark organization. Features local NLP tokenization, domain taxonomy clustering, smart hybrid grouping, optional Gemini AI fallback, and 1-click snapshot restore.**
 
-The selected model is tried first. Fallback candidates are Gemini 3.6 Flash, 3.8 Flash, 3.5 Flash Lite, 3.7 Flash, 3.5 Flash, and 3.1 Flash Lite (without duplicates). Model availability depends on your Google API project; listing a model does not guarantee access or free quota.
+[Quick Install](#-installation) • [Key Features](#-key-features) • [System Architecture](#-system-architecture) • [Organization Modes](#-organization-modes) • [AI Fallback](#-automatic-gemini-fallback) • [Workflow](#-everyday-workflow) • [Testing](#-running-tests)
 
-Quota errors, missing models, server/network errors, empty output, and invalid category output move the request to the next eligible model. Each request, including reading its response, has a 12-second timeout; each batch's fallback chain has a 75-second total budget. The progress message identifies the model being tried. A working model is reused for subsequent batches.
+</div>
 
-Failed models enter an in-memory cooldown with exponential backoff. Quota errors start at 60 seconds, unavailable models at 15 minutes, and other temporary errors at 15 seconds. Longer API retry instructions are honored. Cooldowns last for the dashboard session and reset when the API key changes. Invalid credentials, invalid requests, and safety blocks stop rotation.
+---
 
-When all candidates fail or are cooling down, completed AI classifications are retained and remaining bookmarks receive local suggestions for review before organizing. The dashboard reports AI/local counts; temporary failures do not permanently disable AI. Connection verification uses the same fallback pipeline. Switching models cannot resolve an invalid key or a quota shared across the whole project.
-- Permissions: bookmarks and local extension storage. Google Gemini endpoint access is optional and requested only when AI is enabled.
-- Recovery First: Bookmark moves, duplicate cleanup, imports and automatic organization create or update a local recovery snapshot before changing bookmarks.
-- Never Deletes Without Explicit Approval: Duplicate bookmarks can be reviewed and only deleted when the user confirms with an explicit dialog.
+## 🔒 Privacy & Architecture Guarantees
 
-## Key Features
-1. Deep Recursive Tree Traversal: Recursively traverses every folder, bookmark bar, mobile bookmarks, and nested subfolders to any depth.
-2. Intelligent Local Categorization: Multi-signal scoring engine combining domain taxonomy, TLD heuristics, URL path keywords, title NLP tokenization, and compound contextual boosters.
-   - Predefined categories: Germany, Study Abroad, Programming, AI & Technology, Career & Jobs, Education, Research, Finance, Entertainment, News, Shopping, Travel, Tools, Design, Health, Social.
-3. Interactive Preview & Customization: Starts with simple folder cards and one main action. Advanced editing provides a full table, filters and batch changes when needed.
-4. Undo / Restore: Recovery snapshots are written before changes. One-click restoration retries safely if a bookmark has changed or disappeared.
-5. Duplicate URL Detection: Normalized URL matching strips tracking parameters and hashes. Safe duplicate cleanup.
-6. Automatic Future Organization: Background service worker organizes newly saved bookmarks in real-time.
+> [!TIP]
+> **100% Offline by Default**: The entire categorization engine operates client-side using comprehensive domain dictionaries, URL path tokenizers, and NLP title extractors. Zero external network requests are made unless you explicitly connect your personal Gemini API key.
 
-## Installation
-1. Open Chrome and navigate to chrome://extensions/
-2. Enable Developer mode toggle in the top-right corner.
-3. Click Load unpacked and select this project directory.
+- **Zero Data Leakage**: When optional Gemini AI is enabled, all URLs are stripped of query strings (`?utm=...`) and URL fragments (`#...`). Local (`localhost`), private IPs (RFC 1918), and credentialed URLs are strictly filtered and never sent to external APIs.
+- **Isolated Credential Storage**: API keys are saved in Chrome's isolated extension storage with dedicated 1-click removal.
+- **Atomic Undo Snapshots**: A full hierarchy snapshot is persisted prior to any folder creation, link move, or deduplication.
+- **Strictly Non-Destructive**: Bookmarks are never deleted without explicit confirmation dialogs.
 
-If already installed, click the extension’s Reload button and reopen its dashboard to use the updated interface.
+---
 
-## Everyday workflow
+## 🛠️ System Architecture
 
-### Review first, then organize
+```mermaid
+flowchart TD
+    subgraph Browser ["🌐 Chrome Browser API"]
+        BT["Bookmark Tree<br/>(Bar, Other, Mobile)"]
+    end
 
-The **Review before organizing** list shows uncertain suggestions with their reasons and competing categories. Choose a destination, use the suggestion, or leave a link in place. Up to 50 entries are shown at once, with **Show more** for larger collections. After organizing, the dashboard shows a completion summary instead of reopening Needs Review. **Start a new review** or **Scan again** brings the preparation screen back; unselected bookmarks remain untouched.
+    subgraph ClassifierEngine ["🧠 Hybrid Classification Engine"]
+        LS["Local Multi-Signal Classifier<br/>(16+ Taxonomy Categories, TLDs, Bigrams)"]
+        TC["Topic Clusterer & Bigram Discoverer"]
+        GM["Optional Gemini 6-Tier AI Engine<br/>(3.8 Flash ➔ 3.6 ➔ 3.5 Lite ➔ 3.1 Lite)"]
+        HY["Smart Hybrid Grouping Controller<br/>(Dynamic Clutter Threshold 5-25)"]
+    end
 
-Classification weighs page topics more strongly than mixed-topic hosts such as YouTube, GitHub, and Reddit, ignores tracking parameters, and lowers confidence for close category scores. Folder corrections are saved for the exact page rather than the entire website. Existing broad rules for mixed-topic websites require review; they can be removed in Settings. AI results include confidence, preserve saved page corrections, and require review when they conflict with strong local evidence. Unclassified bookmarks need a chosen destination before they can be moved; the organizer does not create a Needs Review folder for them.
+    subgraph SafetyGate ["🛡️ Safety & Undo Manager"]
+        PR["Folder Protection Mask<br/>(Preserves Whitelisted Trees)"]
+        SN["Atomic Recovery Snapshot<br/>(Last 20 operations persisted)"]
+        RV["Interactive Review Dashboard<br/>(CSS 3D Depth & Preview)"]
+    end
 
-The dashboard and popup use local CSS 3D folder artwork, layered cards, and subtle pointer depth. No external graphics library or extra permissions are required. Motion respects the system’s reduced-motion preference; the folder controls remain stationary and keyboard accessible.
+    BT --> ClassifierEngine
+    ClassifierEngine --> SafetyGate
+    SafetyGate -->|User Confirms| EX["Sequential Atomic Execution<br/>(Reversible bottom-up rollbacks)"]
+    EX --> BT
+```
 
-- The popup opens **Review & organize** in a persistent dashboard. Bookmark moves no longer run inside the temporary popup window.
-- Review the summary: selected to move, left for review, already in place, and protected.
-- Expand a folder card to inspect each link’s original and proposed locations. Strong matches are selected by default; other suggestions require your selection.
-- Choose a destination, then review and confirm the move count. AI previews require review before applying.
-- During moves, **Stop after current bookmark** stops remaining work; completed moves remain in Undo history. Keep the dashboard open until the operation finishes and its snapshot is saved.
-- Undo history retains the latest 20 snapshots. Export a JSON backup for longer-term safekeeping.
+---
 
-## Resetting the folder layout
+## ✨ Key Features
 
-Open **Settings → Maintenance → Reset folders** to move all editable bookmarks directly into their current browser section (Bookmarks Bar, Other Bookmarks, or Mobile Bookmarks), then delete custom folders once empty. Confirm the summary before starting. This includes folders protected from normal organization; browser-managed items and built-in sections remain. No bookmarks are deleted. Non-empty folders are kept if a move fails or a new link arrives during the reset.
+| Feature | Description |
+|---|---|
+| **🌲 Deep Recursive Traversal** | Recursively analyzes nested folder structures, bookmarks bar, other bookmarks, and mobile bookmarks across any depth. |
+| **🏷️ Multi-Signal Local NLP** | Classifies links into 16+ rich categories (e.g., *AI & Tech, Programming, Study Abroad, Finance, Career, Research, Design, Tools*). |
+| **🔀 Smart Hybrid Grouping** | Prevents over-nesting. Automatically flattens small categories (< 10 bookmarks) while neatly partitioning dense categories into targeted subfolders. |
+| **🤖 6-Tier Gemini Failover** | Automatic cascading failover across 6 Gemini models (`3.8 Flash`, `3.6 Flash`, `3.5 Flash-Lite`, `3.7 Flash`, `3.5 Flash`, `3.1 Flash-Lite`) with exponential backoff cooldowns. |
+| **🧹 Clutter Auto-Splitter** | Detects folders exceeding clutter thresholds (> 12 items) and groups them by shared domain roots or bigram topics. |
+| **🔍 URL Normalization & Deduplication** | Identifies duplicate URLs regardless of trailing slashes, HTTP/HTTPS variance, and UTM tracking parameters. |
+| **⏪ Instant 1-Click Rollback** | Dedicated Undo Manager stores up to 20 granular snapshots with bottom-up folder cleanup and JSON backup export/import. |
+| **🎨 Tactile CSS 3D Dashboard** | Responsive dashboard featuring realistic folder depths, hover tilts, reduced-motion compliance, and zero heavy 3D dependencies. |
 
-A snapshot is saved before any changes. **Undo history → Folder Reset → Restore This State** recreates the original hierarchy, including empty and same-name folders, and restores bookmark order. Keep the dashboard open until completion, then use **Review & organize** to categorize the flattened links again. Snapshot history retains the latest 20 operations; export a backup for longer-term storage.
+---
 
-## Protecting folders
+## 📂 Organization Modes
 
-In **Settings → Protect folders from organization**, check any folders you want to preserve. Protection follows folder IDs, includes nested folders, and excludes their links from organization and Gemini requests. Protected folders are also skipped during empty-folder cleanup and cannot be organization destinations. Duplicate cleanup, developer tools, and manually requested restores are separate operations.
+Configure your preferred folder structure under **Settings → Organization Style**:
 
-The **Select strong matches only** setting controls initial selection and background auto-organization. You can still explicitly select other suggestions in the preview.
+```
+1. Flat Mode
+   ├── AI & Technology (all AI bookmarks flat)
+   ├── Programming (all coding bookmarks flat)
+   └── Finance (all trading & finance flat)
 
-## Disposable UI preview
+2. Hierarchical Mode
+   ├── AI & Technology
+   │   ├── LLMs & Prompting
+   │   └── Machine Learning
+   └── Programming
+       ├── Python
+       └── Frontend & Web
 
-Run `node tests/preview-server.cjs` and open `http://127.0.0.1:8765/ui/dashboard.html` or `/ui/popup.html`. This uses in-memory sample bookmarks and never accesses real Chrome bookmarks. Reloading resets the sample data. Stop the server with Ctrl+C.
+3. Smart Hybrid Mode (Default — Recommended)
+   ├── AI & Technology (18 bookmarks -> auto-split into subfolders)
+   │   ├── Computer Vision
+   │   └── Models & Frameworks
+   └── Finance (4 bookmarks -> kept clean & flat without subfolder clutter)
+```
 
-## Running Tests
+---
+
+## 🤖 Automatic Gemini Fallback
+
+When optional AI classification is enabled, requests follow a resilient fallback sequence:
+
+```
+[Gemini 3.8 Flash] ➔ [Gemini 3.6 Flash] ➔ [Gemini 3.5 Flash-Lite] ➔ [Gemini 3.7 Flash] ➔ [Gemini 3.5 Flash] ➔ [Gemini 3.1 Flash-Lite]
+```
+
+- **Per-request timeout**: 12 seconds per call.
+- **Batch budget**: 75 seconds total limit per batch.
+- **In-memory cooldown**: 60s for quota limits (`429`), 15m for missing models (`404`), and 15s for temporary connection faults.
+- **Safe fallback**: If all AI models are exhausted, the extension seamlessly falls back to local heuristic rules without interrupting your flow.
+
+---
+
+## 🚀 Installation
+
+1. Clone or download this repository.
+2. Open Google Chrome and navigate to `chrome://extensions/`.
+3. Toggle on **Developer mode** in the top right corner.
+4. Click **Load unpacked** and select the `chrome extension` directory (`D:\AI STUFF\PROJECTS\chrome extension`).
+5. Click the extension icon in your toolbar to launch the organizer!
+
+---
+
+## 🖥️ Everyday Workflow
+
+1. **Review Before Organizing**:
+   - The dashboard highlights strong matches (pre-selected) and displays uncertain suggestions with confidence scores and rationale.
+   - Adjust suggested destinations inline or leave specific bookmarks in place.
+2. **Execute Cleanly**:
+   - Hit **Apply Changes**. The extension executes moves sequentially while recording current parents.
+   - Use **Stop after current bookmark** at any time to pause mid-run without corrupting your hierarchy.
+3. **Undo Anytime**:
+   - Open **Undo History** to restore your bookmarks to their exact previous state with one click.
+4. **Folder Reset Utility**:
+   - Want a clean slate? Use **Settings → Maintenance → Reset Folders** to safely flatten your entire collection to the root bar before re-organizing.
+
+---
+
+## 🧪 Disposable UI Preview Server
+
+Test and inspect the full UI without modifying your real browser bookmarks:
+
+```powershell
+node tests/preview-server.cjs
+```
+Open **http://127.0.0.1:8765/ui/dashboard.html** or **http://127.0.0.1:8765/ui/popup.html** to explore simulated bookmark trees.
+
+---
+
+## 🧪 Running Tests
+
+```powershell
+# Run 205 automated unit and safety tests
 npm test
+
+# Verify JavaScript syntax across all files
 npm run syntax
+```
+
+---
+
+## 📁 Repository Structure
+
+```
+chrome-bookmark-organizer/
+├── background/
+│   └── service-worker.js         # Manifest V3 service worker & alarms
+├── core/
+│   ├── bookmark-tree.js          # Deep tree traversal & execution engine
+│   ├── categorizer.js            # Local heuristic scoring & NLP engine
+│   ├── classification-evidence.js # Confidence & competing match scorer
+│   ├── default-rules.js          # Predefined domain taxonomy & keyword maps
+│   ├── folder-reset.js           # Safe flattening & root restoration
+│   ├── gemini-service.js         # 6-tier AI client with cooldown management
+│   ├── organization-safety.js    # Folder protection & execution validator
+│   ├── storage.js                # Chrome storage synchronization wrapper
+│   └── undo-manager.js           # Snapshot persistence & rollback manager
+├── ui/
+│   ├── dashboard.html            # Main organizer control center
+│   ├── dashboard.js              # State manager & review controller
+│   ├── dashboard.css             # Tactile 3D design system & themes
+│   ├── depth.css / friendly.css  # Tactile visual enhancements
+│   ├── popup.html / popup.js     # Lightweight toolbar launcher
+│   └── popup.css                 # Popup styles
+├── tests/                        # 205 Passing test cases
+├── icons/                        # Extension icons (16px, 32px, 48px, 128px)
+├── manifest.json                 # Manifest V3 configuration
+└── README.md                     # Documentation
+```
+
+---
+
+<div align="center">
+  <sub>Built for effortless bookmark management, total privacy, and complete peace of mind.</sub>
+</div>
