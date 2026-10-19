@@ -1,0 +1,19 @@
+{
+  "name": "chrome-bookmark-organizer",
+  "version": "1.0.0",
+  "description": "Privacy-first, 100% offline Chrome bookmark organizer extension (Manifest V3)",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "syntax": "node check_syntax.cjs"
+  },
+  "keywords": [
+    "chrome-extension",
+    "bookmarks",
+    "organizer",
+    "manifest-v3",
+    "privacy-first"
+  ],
+  "author": "",
+  "license": "MIT"
+}

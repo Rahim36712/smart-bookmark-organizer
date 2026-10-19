@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Bookmark Organizer - Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="friendly.css">
+  <link rel="stylesheet" href="depth.css">
+</head>
+<body>
+  <!-- Top App Navigation -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="brand">
+        <img src="../icons/icon48.png" alt="Logo" class="brand-logo">
+        <div>
+          <h1 class="brand-title">Smart Bookmark Organizer</h1>
+          <p class="brand-subtitle">A little less clutter. Everything easier to find.</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnRescan" class="btn btn-outline" title="Rescan bookmarks from browser">
+          <span class="icon">↻</span> Scan again
+        </button>
+        <button id="btnHeaderSettings" class="btn btn-outline" title="Open settings and preferences" aria-controls="tab-settings" aria-pressed="false">
+          <span class="icon">⚙️</span> Settings
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist" aria-label="Bookmark organizer sections">
+      <button id="navOrganize" class="nav-tab active" data-tab="tab-organize" role="tab" aria-selected="true" aria-controls="tab-organize" tabindex="0">
+        <span class="tab-icon">🗂️</span> Organize
+      </button>
+      <button id="navDuplicates" class="nav-tab" data-tab="tab-duplicates" role="tab" aria-selected="false" aria-controls="tab-duplicates" tabindex="-1">
+        <span class="tab-icon">👥</span> Duplicates
+        <span class="tab-badge" id="badgeDuplicatesCount">0</span>
+      </button>
+      <button id="navHistory" class="nav-tab" data-tab="tab-history" role="tab" aria-selected="false" aria-controls="tab-history" tabindex="-1">
+        <span class="tab-icon">↩️</span> Undo history
+        <span class="tab-badge" id="badgeHistoryCount">0</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="main-container">
+    <div id="organizationNotice" class="result-notice" role="status" hidden></div>
+
+    <!-- ==================== TAB 1: ORGANIZE & PREVIEW ==================== -->
+    <section id="tab-organize" class="tab-pane active" role="tabpanel" aria-labelledby="navOrganize">
+      <section id="organizationResult" class="review-workspace" role="status" hidden></section>
+      <!-- ==================== SIMPLE MODE VIEW (DEFAULT) ==================== -->
+      <div id="viewSimpleMode" class="view-mode-container">
+        <section id="welcomeCard" class="welcome-card" hidden aria-labelledby="welcomeTitle">
+          <div>
+            <span class="eyebrow">WELCOME</span>
+            <h2 id="welcomeTitle">Organize without losing control.</h2>
+            <p>Review the suggested folders below. Only bookmarks you select will move, and every move can be undone.</p>
+          </div>
+          <button id="btnStartReview" class="btn btn-primary">Got it</button>
+        </section>
+        <div class="simple-page-heading">
+          <div>
+            <span class="eyebrow">BOOKMARK REVIEW</span>
+            <h2>Review your suggested folders</h2>
+            <p>Choose what to move, then organize everything with one click.</p>
+          </div>
+          <div class="engine-preference-toggle" title="Switch between Gemini AI and local suggestions">
+            <span class="engine-toggle-label" id="lblEngineToggle">Local suggestions</span>
+            <label class="switch">
+              <input type="checkbox" id="toggleAiEngine" aria-label="Use Gemini AI for suggestions">
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
+
+        <div id="reviewSummary" class="review-summary" aria-live="polite"></div>
+        <p id="reviewHelp" class="review-help">Strong matches are selected first. You can include other suggestions using the checkboxes. Protected folders stay outside this preview.</p>
+        <section id="bookmarkReview" class="review-workspace" aria-label="Bookmarks needing a decision" hidden></section>
+        <!-- Simple Mode Controls Bar -->
+        <div class="simple-controls-bar">
+          <div class="simple-destination-group">
+            <label for="selectSimpleDestination">Save organized links in</label>
+            <select id="selectSimpleDestination" class="form-select simple-select">
+              <option value="dedicated" selected>📁 Organized Bookmarks (in Bookmarks Bar)</option>
+              <option value="dedicated_other">📁 Organized Bookmarks (in Other Bookmarks)</option>
+              <option value="bar">Bookmarks Bar Root</option>
+              <option value="other">Other Bookmarks Root</option>
+            </select>
+          </div>
+          <div class="simple-stats-summary" id="simpleStatsSummary">
+            Scanning bookmarks...
+          </div>
+        </div>
+
+        <div class="collection-heading"><div><h3>Suggested folders</h3></div><span>Open a folder to see its bookmarks</span></div>
+        <!-- Proposed Folders Cards Grid -->
+        <div class="simple-folders-grid" id="simpleFoldersGrid">
+          <!-- Populated dynamically with progressive disclosure visual cards -->
+        </div>
+
+        <!-- Simple Mode Bottom Sticky Bar -->
+        <div class="simple-bottom-bar">
+          <div class="action-info">
+            <span>Only selected bookmarks will move. You can undo afterward.</span>
+          </div>
+          <div class="simple-bottom-actions">
+            <button id="btnSwitchToAdvancedFromSimple" class="btn btn-outline" type="button">
+              Advanced editing
+            </button>
+            <button id="btnCleanAndOrganizeBottom" class="btn btn-primary btn-lg" type="button">
+              <span id="btnCleanBottomText">Organize</span> <span id="txtSimpleApplyCount">0</span> bookmarks
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== ADVANCED MODE VIEW ==================== -->
+      <div id="viewAdvancedMode" class="view-mode-container" style="display: none;">
+        <!-- Advanced Mode Header Banner -->
+        <div class="advanced-mode-banner">
+          <div class="advanced-mode-info">
+            <span class="advanced-mode-icon">🛠️</span>
+            <div>
+              <h3 class="advanced-mode-title">Advanced Table &amp; Rules Editor</h3>
+              <p class="advanced-mode-desc">Detailed bookmark assignment, batch categorization, clutter splitting, and search.</p>
+            </div>
+          </div>
+          <button id="btnSwitchToSimpleFromAdvanced" class="btn btn-outline" type="button">
+            ✨ Switch to Simple Mode
+          </button>
+        </div>
+
+        <!-- Metrics Overview -->
+        <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-icon">📑</span>
+          <div>
+            <div class="metric-value" id="metricTotalBookmarks">-</div>
+            <div class="metric-label">Total Bookmarks</div>
+          </div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-icon">📁</span>
+          <div>
+            <div class="metric-value" id="metricTotalFolders">-</div>
+            <div class="metric-label">Scattered Folders</div>
+          </div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-icon">🏷️</span>
+          <div>
+            <div class="metric-value" id="metricCategoriesCount">-</div>
+            <div class="metric-label">Categories Matched</div>
+          </div>
+        </div>
+        <div class="metric-card">
+          <span class="metric-icon">👥</span>
+          <div>
+            <div class="metric-value" id="metricDuplicatesCount">-</div>
+            <div class="metric-label">Duplicate URLs</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Organization Controls & Setup -->
+      <div class="config-card">
+        <div class="config-grid">
+          <div class="config-group">
+            <label for="selectDestinationRoot">Destination Root Folder</label>
+            <select id="selectDestinationRoot" class="form-select">
+              <option value="dedicated" selected>📁 Organized Bookmarks (in Bookmarks Bar)</option>
+              <option value="dedicated_other">📁 Organized Bookmarks (in Other Bookmarks)</option>
+              <option value="bar">Bookmarks Bar Root</option>
+              <option value="other">Other Bookmarks Root</option>
+            </select>
+          </div>
+
+          <div class="config-group">
+            <label for="selectGroupingMode">Folder Structure</label>
+            <select id="selectGroupingMode" class="form-select">
+              <option value="hybrid" selected>Smart Hybrid (Subfolders if ≥ 10 bookmarks)</option>
+              <option value="flat">Flat (Top-Level Category Only)</option>
+              <option value="hierarchical">Hierarchical (Always Use Subcategories)</option>
+            </select>
+          </div>
+
+          <div class="config-group" id="hybridThresholdGroup">
+            <label for="inputHybridThreshold">Subfolder Threshold</label>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="number" id="inputHybridThreshold" class="form-select" style="width: 75px; padding: 6px 10px;" min="5" max="25" value="10" title="Categories with fewer bookmarks stay flat (5–25, default: 10)">
+              <span style="font-size: 12px; color: var(--text-muted);">bookmarks</span>
+            </div>
+          </div>
+
+          <div class="config-group config-checkbox-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="chkCleanEmptyFolders">
+              <span class="checkmark"></span>
+              <span>Clean empty scattered folders after moving</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== STAGE 1: PROPOSED FOLDER PLAN REVIEW ==================== -->
+      <div class="proposal-review-card" id="proposalReviewCard">
+        <div class="review-header">
+          <div class="review-header-title">
+            <span class="stage-badge">Stage 1</span>
+            <div>
+              <h3 class="card-title">Suggested Folder Structure &amp; New Categories</h3>
+              <p class="setting-desc">
+                Autonomous heuristic taxonomy proposal. Rename folders inline across all bookmarks, merge categories, or split clutter.
+              </p>
+            </div>
+          </div>
+          <div class="review-header-actions">
+            <button id="btnAutoSplitAll" class="btn btn-sm btn-outline">⚡ Split Clutter</button>
+            <button id="btnProposeNewFolder" class="btn btn-sm btn-primary">➕ Propose New Folder</button>
+          </div>
+        </div>
+
+        <!-- Uncategorized Warning Card -->
+        <div id="uncategorizedAlert" class="uncategorized-alert" style="display: none;">
+          <div class="alert-content">
+            <span class="alert-icon">⚠️</span>
+            <div>
+              <strong id="uncategorizedCountText">0 bookmarks need review</strong>
+              <p>These bookmarks could not be automatically grouped. Choose a category or assign them directly.</p>
+            </div>
+          </div>
+          <div class="alert-actions">
+            <button id="btnFilterUncategorized" class="btn btn-sm btn-warning">Review Uncategorized</button>
+          </div>
+        </div>
+
+        <!-- Proposed Folders Grid -->
+        <div class="folders-proposal-grid" id="foldersProposalGrid">
+          <!-- Populated dynamically: folder name inline editable, count, merge select, exclude -->
+        </div>
+      </div>
+
+      <!-- ==================== STAGE 2: DETAILED BOOKMARK TABLE & SMART TAGS ==================== -->
+      <div class="stage-section-header">
+        <span class="stage-badge stage-badge-subtle">Stage 2</span>
+        <h3 class="card-title">Detailed Bookmark Assignment &amp; Smart Tags</h3>
+      </div>
+
+      <!-- Category Filter Pills Bar -->
+      <div class="category-pills-container">
+        <div class="category-pills-scroll" id="categoryPills">
+          <!-- Populated dynamically: All, Germany, Study Abroad, Programming, AI, etc. -->
+        </div>
+      </div>
+
+      <!-- Preview Toolbar & Search -->
+      <div class="table-toolbar">
+        <div class="toolbar-left">
+          <label class="checkbox-container select-all-label">
+            <input type="checkbox" id="chkSelectAll" checked>
+            <span class="checkmark"></span>
+            <span id="txtSelectionCount">Selected: All</span>
+          </label>
+
+          <div class="batch-actions">
+            <select id="batchCategorySelect" class="form-select batch-select">
+              <option value="" disabled selected>Batch change category...</option>
+            </select>
+            <button id="btnApplyBatch" class="btn btn-sm btn-outline">Apply</button>
+            <button id="btnInvertSelection" class="btn btn-sm btn-outline">Invert</button>
+          </div>
+
+          <!-- Scattered Folder Filter -->
+          <div class="folder-filter-wrapper">
+            <select id="selectSourceFolder" class="form-select batch-select">
+              <option value="all" selected>All Source Locations</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="inputSearch" placeholder="Search by title, URL or domain..." class="search-input">
+            <button id="btnClearSearch" class="btn-clear" style="display: none;">&times;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Table -->
+      <div class="preview-table-container">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th width="40"></th>
+              <th>Bookmark Title &amp; URL</th>
+              <th width="220">Current Location</th>
+              <th width="260">Proposed Folder / Category</th>
+              <th width="140">Match Quality</th>
+            </tr>
+          </thead>
+          <tbody id="previewTableBody">
+            <tr>
+              <td colspan="5" class="empty-message">Scanning bookmark tree...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bottom Sticky Action Bar -->
+      <div class="bottom-action-bar">
+        <div class="action-info">
+          <span class="icon">🛡️</span>
+          <span>A complete undo snapshot will be saved before moving bookmarks. Zero bookmarks will ever be deleted.</span>
+        </div>
+        <div class="action-buttons">
+          <button id="btnExportBeforeOrganize" class="btn btn-secondary">
+            💾 Export Backup First
+          </button>
+          <button id="btnApplyOrganization" class="btn btn-primary btn-lg">
+            🚀 Apply Organization (<span id="txtApplyCount">0</span> Bookmarks)
+          </button>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: DUPLICATE CLEANER ==================== -->
+    <section id="tab-duplicates" class="tab-pane" role="tabpanel" aria-labelledby="navDuplicates" hidden>
+      <div class="section-banner">
+        <div>
+          <h2 class="section-title">Duplicate Bookmark Detection</h2>
+          <p class="section-subtitle">
+            Find bookmarks that open the same page, then choose which extra copies to remove. A recovery snapshot is created first.
+          </p>
+        </div>
+        <div class="banner-actions">
+          <button id="btnDeleteSelectedDuplicates" class="btn btn-danger" disabled>
+            🗑️ Delete Selected Duplicates (<span id="txtDuplicateSelectedCount">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <div id="duplicateClustersList" class="duplicate-clusters-list">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: RESTORE & UNDO ==================== -->
+    <section id="tab-history" class="tab-pane" role="tabpanel" aria-labelledby="navHistory" hidden>
+      <div class="section-banner">
+        <div>
+          <h2 class="section-title">Reorganization History &amp; Snapshots</h2>
+          <p class="section-subtitle">
+            Every reorganization and duplicate cleanup creates a reversible snapshot. Restore any previous state with a single click.
+          </p>
+        </div>
+        <div class="banner-actions">
+          <label class="btn btn-outline file-input-label">
+            📥 Import JSON Backup
+            <input type="file" id="fileImportBackup" accept=".json" style="display: none;">
+          </label>
+          <button id="btnDownloadCurrentBackup" class="btn btn-secondary">
+            💾 Export Full Backup JSON
+          </button>
+        </div>
+      </div>
+
+      <div id="snapshotsList" class="snapshots-list">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: SETTINGS & RULES ==================== -->
+    <section id="tab-settings" class="tab-pane" role="tabpanel" aria-labelledby="btnHeaderSettings" hidden>
+      <div class="settings-layout">
+        <div class="card settings-card">
+          <h3 class="card-title">Keep control of your bookmarks</h3>
+          <label class="preference-row"><input id="highConfidenceOnly" type="checkbox" checked><span><strong>Select strong matches only</strong><small>Recommended. Uncertain suggestions stay untouched unless you select them. Also applies to auto-organization.</small></span></label>
+          <details class="folder-protection"><summary>Protect folders from organization</summary>
+            <p>Checked folders and all their subfolders are excluded from organization, empty-folder cleanup, and Gemini requests. Duplicate cleanup and manual restore remain separate actions.</p>
+            <div id="protectedFolders" class="protected-folders"></div>
+          </details>
+        </div>
+        <!-- General Preferences -->
+        <div class="card settings-card">
+          <h3 class="card-title">Automation &amp; Organization Preferences</h3>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-name">Auto-organize future bookmarks</span>
+              <span class="setting-desc">Automatically categorize and move newly added bookmarks in the background</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settingAutoOrganize">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-name">Folder Structure Mode</span>
+              <span class="setting-desc">Choose between Smart Hybrid (subfolders only for large folders), Flat (1-level), or Always Hierarchical.</span>
+            </div>
+            <select id="settingGroupingMode" class="form-select" style="max-width: 280px;">
+              <option value="hybrid" selected>Smart Hybrid (Subfolders if ≥ threshold)</option>
+              <option value="flat">Flat (Never create subfolders)</option>
+              <option value="hierarchical">Always Hierarchical (Strict Subcategories)</option>
+            </select>
+            <input type="checkbox" id="settingUseSubcategories" style="display: none;">
+          </div>
+
+          <div class="setting-item" id="settingHybridThresholdRow">
+            <div class="setting-info">
+              <span class="setting-name">Smart Hybrid Subfolder Threshold</span>
+              <span class="setting-desc">Minimum bookmarks in a category required before creating subfolders (5–25, default: 10). Smaller categories remain clean and flat.</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="number" id="settingHybridThreshold" class="form-input" style="width: 75px; text-align: center; padding: 6px;" min="5" max="25" value="10">
+              <span style="font-size: 12px; color: var(--text-muted);">bookmarks</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Google Gemini AI Preferences -->
+        <div class="card settings-card" id="geminiSettingsCard">
+          <div class="card-header-flex">
+            <div>
+              <h3 class="card-title">✨ Google Gemini AI (Optional)</h3>
+              <p class="setting-desc">
+                Optional AI suggestions. When enabled, eligible bookmark titles and cleaned URLs are sent to Google.
+              </p>
+            </div>
+            <span class="gemini-pill-badge" id="geminiModelBadge">gemini-3.6-flash</span>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <span class="setting-name">Enable Gemini AI Features</span>
+              <span class="setting-desc">When enabled, calls Google Gemini API to analyze bookmark titles and URLs into smart categories and subcategories.</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settingGeminiEnabled">
+              <span class="slider round"></span>
+            </label>
+          </div>
+
+          <div id="geminiKeySection" class="gemini-key-section">
+            <label class="preference-row compact-preference">
+              <input type="checkbox" id="settingGeminiConsent">
+              <span><strong>I understand what is sent</strong><small>Gemini receives eligible bookmark titles and URLs. Protected folders are never sent.</small></span>
+            </label>
+
+            <details class="folder-protection ai-advanced-options">
+              <summary>Advanced AI privacy and model options</summary>
+            <div class="form-group" style="margin-top: 14px;">
+              <label for="selectGeminiModel">AI Model</label>
+              <select id="selectGeminiModel" class="form-select">
+                <option value="auto">Auto / Smart Fallback (Recommended)</option>
+                <option value="gemini-3.6-flash" selected>gemini-3.6-flash (Fast Workhorse - Recommended)</option>
+                <option value="gemini-3.8-flash">gemini-3.8-flash (Latest Workhorse)</option>
+                <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Ultra-Fast Lite)</option>
+                <option value="gemini-3.7-flash">gemini-3.7-flash (Balanced)</option>
+                <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+                <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+              </select>
+              <div class="form-hint" style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                Your selected model is tried first, followed by the other listed models. Quota limits, timeouts, unavailable models, and invalid responses trigger automatic failover. Cooling-down models are skipped. If none responds, remaining bookmarks are classified locally. Availability depends on your API project.
+              </div>
+            </div>
+              <label class="preference-row compact-preference">
+                <input type="checkbox" id="settingGeminiStripQueryParams" checked>
+                <span><strong>Remove query details before sending</strong><small>Removes text after ? and # from URLs before they leave your browser.</small></span>
+              </label>
+              <label class="preference-row compact-preference">
+                <input type="checkbox" id="settingGeminiExcludePrivateUrls" checked>
+                <span><strong>Exclude private and local addresses</strong><small>Skips localhost, local networks, file links, and non-web URLs.</small></span>
+              </label>
+            </details>
+
+            <div class="form-group" style="margin-top: 14px;">
+              <label for="inputGeminiApiKey">Gemini API Key</label>
+              <div class="gemini-input-group">
+                <input type="password" id="inputGeminiApiKey" class="form-input" placeholder="Paste your Gemini API key (AIzaSy...)" autocomplete="off">
+                <button id="btnToggleApiKeyVisibility" class="btn btn-sm btn-outline" type="button">👁️ Show</button>
+                <button id="btnTestGeminiKey" class="btn btn-sm btn-primary" type="button">Verify &amp; Save</button>
+                <button id="btnForgetGeminiKey" class="btn btn-sm btn-danger-outline" type="button">Remove key</button>
+              </div>
+              <div class="form-hint-row" style="margin-top: 8px;">
+                <span class="form-hint" style="font-size: 12px; color: var(--text-muted);">
+                  Get a free API key with no credit card required at
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: underline;">Google AI Studio</a>.
+                  Your key is kept separately in this extension's local Chrome storage. It is not included in bookmark backups.
+                </span>
+              </div>
+              <div id="geminiTestStatus" class="gemini-status-message" style="display: none; margin-top: 10px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <details class="card settings-card developer-tools-card">
+          <summary class="developer-tools-summary">
+            <div class="developer-tools-summary-content">
+              <div>
+                <h3 class="card-title">Advanced organization rules</h3>
+                <p class="setting-desc">Learned preferences and custom categories.</p>
+              </div>
+            </div>
+            <span class="developer-tools-chevron">▾</span>
+          </summary>
+          <div class="developer-tools-body advanced-settings-stack">
+        <!-- Adaptive Learned Preferences -->
+        <div class="card settings-card nested-settings-card">
+          <div class="card-header-flex">
+            <div>
+              <h3 class="card-title">Your learned preferences</h3>
+              <p class="setting-desc">Rules learned automatically from your manual reorganizations, renames, and folder choices.</p>
+            </div>
+            <button id="btnClearLearnedRules" class="btn btn-danger-outline btn-sm">
+              🗑️ Clear Learned Rules
+            </button>
+          </div>
+
+          <div class="categories-list-preview" id="settingsLearnedRulesList">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Custom Category Rules -->
+        <div class="card settings-card nested-settings-card">
+          <div class="card-header-flex">
+            <div>
+              <h3 class="card-title">Custom categories</h3>
+              <p class="setting-desc">Customize or add new category rules for specialized domains and keywords.</p>
+            </div>
+            <button id="btnOpenAddCategoryModal" class="btn btn-outline btn-sm">
+              ➕ Add Custom Category
+            </button>
+          </div>
+
+          <div class="categories-list-preview" id="settingsCategoriesList">
+            <!-- Populated dynamically -->
+          </div>
+
+          <div class="card-footer-flex">
+            <button id="btnResetDefaultRules" class="btn btn-danger-outline btn-sm">
+              🔄 Reset to Factory Default Rules
+            </button>
+          </div>
+        </div>
+          </div>
+        </details>
+
+        <!-- Privacy & Security Assurance -->
+        <div class="card settings-card privacy-card">
+          <h3 class="card-title">Your privacy</h3>
+          <p class="privacy-text">
+            Local classification stays inside your browser. When Gemini is enabled, eligible titles and cleaned web URLs are sent to Google. Query details and private/local addresses are excluded by default, and protected folders are never sent. Your API key stays in this extension's local Chrome storage.
+          </p>
+        </div>
+
+        <details class="card settings-card developer-tools-card">
+          <summary class="developer-tools-summary">
+            <div class="developer-tools-summary-content">
+              <div>
+                <h3 class="card-title">Maintenance</h3>
+                <p class="setting-desc">Backup, reset, and recovery tools for occasional use.</p>
+              </div>
+            </div>
+            <span class="developer-tools-chevron">▾</span>
+          </summary>
+          <div class="developer-tools-body">
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="setting-name">Clean up empty folders after organizing</span>
+                <span class="setting-desc">Remove old folders only after their bookmarks were moved and the folders are empty.</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="settingCleanEmpty">
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <p class="setting-desc">Move bookmarks out of custom folders and remove folders that become empty. A restore snapshot is saved first.</p>
+            <button id="btnResetFolders" class="btn btn-danger-outline" title="Move bookmarks out of custom folders and remove empty folders">Reset folder layout</button>
+          </div>
+        </details>
+
+        <!-- Developer & Testing Tools (Collapsible Section) -->
+        <details class="card settings-card developer-tools-card" id="developerToolsSection">
+          <summary class="developer-tools-summary">
+            <div class="developer-tools-summary-content">
+              <span class="developer-tools-icon">🧪</span>
+              <div>
+                <h3 class="card-title">Developer &amp; Testing Tools</h3>
+                <p class="setting-desc">Advanced utilities for developer testing, bookmark scattering, and sample data injection.</p>
+              </div>
+            </div>
+            <span class="developer-tools-chevron">▾</span>
+          </summary>
+          <div class="developer-tools-body">
+            <div class="testing-content">
+              <div class="testing-info-left">
+                <p class="setting-desc">
+                  Unpack bookmarks into scattered test folders or inject 25 realistic sample bookmarks across AI, Germany, Study Abroad, Gaming, Trading &amp; Health. An automatic reversible undo snapshot is saved before scattering.
+                </p>
+              </div>
+              <div class="testing-actions">
+                <button id="btnScatterBookmarks" class="btn btn-outline" title="Scatter bookmarks into test folders to test reorganization">
+                  🎲 Scatter Existing Bookmarks
+                </button>
+                <button id="btnGenerateSampleBookmarks" class="btn btn-outline" title="Inject 25 sample bookmarks across 6 categories">
+                  ✨ Generate 25 Sample Bookmarks
+                </button>
+                <button id="btnRemoveSampleBookmarks" class="btn btn-outline btn-danger-outline" style="display: none;" title="Remove the 25 sample test bookmarks and clean up test folders">
+                  🧹 Remove Sample Bookmarks
+                </button>
+              </div>
+            </div>
+            <div id="scatterNoticeBanner" class="scatter-notice-banner" style="display: none; margin-top: 14px;">
+              <div class="scatter-notice-text">
+                <span>🎲</span>
+                <span id="scatterNoticeMessage">Bookmarks scattered into test folders! A reversible undo snapshot was saved.</span>
+              </div>
+              <button id="btnQuickUndoScatter" class="btn btn-sm btn-primary">↩️ 1-Click Restore Structure</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Progress Modal Dialog -->
+  <div id="progressModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <h3 class="modal-title" id="progressModalTitle">Organizing Bookmarks...</h3>
+      <p class="modal-desc" id="progressModalDesc">Please keep Chrome open while bookmarks are being safely relocated.</p>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+      </div>
+      <div class="progress-stats" id="progressStats" role="status" aria-live="polite">0% (0 / 0)</div>
+      <button id="btnCancelOrganization" class="btn btn-outline" hidden>Stop after current bookmark</button>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal Dialog -->
+  <div id="confirmModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" style="display: none;">
+    <div class="modal-card">
+      <h3 class="modal-title" id="confirmModalTitle">Confirm Action</h3>
+      <div class="modal-body" id="confirmModalBody"></div>
+      <div class="modal-actions">
+        <button id="btnConfirmCancel" class="btn btn-outline">Cancel</button>
+        <button id="btnConfirmOk" class="btn btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Custom Category Modal -->
+  <div id="addCategoryModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card modal-lg">
+      <h3 class="modal-title">Add Custom Category</h3>
+      <p class="modal-desc">Define custom classification rules for your bookmarks.</p>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Category Name *</label>
+          <input type="text" id="inputNewCatName" class="form-input" placeholder="e.g., Cryptography &amp; Security">
+        </div>
+        <div class="form-group">
+          <label>Icon (Emoji)</label>
+          <input type="text" id="inputNewCatIcon" class="form-input" placeholder="e.g., 🔒" value="📁">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Matching Domains (comma-separated)</label>
+        <input type="text" id="inputNewCatDomains" class="form-input" placeholder="e.g., torproject.org, eff.org, cryptohack.org">
+      </div>
+
+      <div class="form-group">
+        <label>Title Keywords (comma-separated)</label>
+        <input type="text" id="inputNewCatKeywords" class="form-input" placeholder="e.g., cryptography, encryption, zero-knowledge, privacy">
+      </div>
+
+      <div class="modal-actions">
+        <button id="btnCancelAddCategory" class="btn btn-outline">Cancel</button>
+        <button id="btnSaveNewCategory" class="btn btn-primary">Save Category</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Mode Helpers for backward-compatibility -->
+  <div style="display: none;">
+    <button id="btnModeSimple"></button>
+    <button id="btnModeAdvanced"></button>
+  </div>
+
+  <script type="module" src="dashboard.js"></script>
+  <script type="module" src="depth.js"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Bookmark Organizer</title>
+  <link rel="stylesheet" href="popup.css">
+  <link rel="stylesheet" href="friendly.css">
+  <link rel="stylesheet" href="depth.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-group">
+        <img src="../icons/icon32.png" alt="Logo" class="logo">
+        <div>
+          <h1 class="title">Bookmark Organizer</h1>
+          <span class="privacy-badge" id="popupModeBadge">Checking settings…</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- One useful number, followed by one clear next action. -->
+    <div class="zen-status-card">
+      <div class="zen-status-row">
+        <div class="zen-stat-item">
+          <span class="zen-stat-num" id="statPending">-</span>
+          <span class="zen-stat-lbl">bookmarks ready to review</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Prominent 1-Click Clean & Organize CTA -->
+    <button id="btnQuickOrganize" class="btn btn-primary btn-cta">
+      <span id="btnQuickOrganizeIcon">⚡</span>
+      <span id="btnQuickOrganizeText">Review &amp; organize</span>
+    </button>
+
+    <!-- Quick Undo Button -->
+    <button id="btnQuickUndo" class="btn btn-secondary btn-undo" title="Revert last reorganization">
+      <span>↩️ Undo recent changes</span>
+    </button>
+
+    <!-- Footer Notification / Status -->
+    <div id="statusMessage" class="status-message" role="status">Reading your bookmarks…</div>
+    <p id="undoHint" class="popup-hint" hidden></p>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
